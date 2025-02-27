@@ -1,0 +1,62 @@
+name: Build and Deploy
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  test:
+    runs-on: self-hosted 
+    env:
+      SECRET_KEY: ${{ secrets.SECRET_KEY }}
+
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v3
+        with:
+          repository: 'CSE-316-Software-Development/final-project-shrushti-nihar'
+          ref: 'main'
+          path: 'final-project-shrushti-nihar'
+
+      - name: Setup Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: 16
+
+      - name: Install Client Dependencies
+        run: |
+          cd final-project-shrushti-nihar/client
+          npm ci
+
+      - name: Install Server Dependencies
+        run: |
+          cd final-project-shrushti-nihar/server
+          npm ci
+
+      - name: Run Server Tests
+        run: |
+          cd final-project-shrushti-nihar/server
+          npx jest --runInBand tests/
+
+  deploy:
+    needs: test  # Only run if the 'test' job succeeds
+    runs-on: self-hosted
+    if: ${{ needs.test.result == 'success' }}  # Only run if tests pass
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v3
+        with:
+          repository: 'CSE-316-Software-Development/final-project-shrushti-nihar'
+          ref: 'main'
+          path: 'final-project-shrushti-nihar'
+
+      - name: Merge to Deploy Branch
+        continue-on-error: true
+        run: |
+          git fetch origin deploy
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git checkout deploy
+          git merge main --no-ff
+          git push origin deploy
